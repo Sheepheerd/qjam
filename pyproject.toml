@@ -1,0 +1,7 @@
+[project]
+name = "qjam"
+version = "0.1.0"
+description = "jam thingy"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = []
