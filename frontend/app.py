@@ -13,6 +13,10 @@ def get_audio_url(youtube_url):
 def index():
     return render_template('index.html')
 
+@app.route('/room',methods=['GET'] )
+def room():
+    return render_template('room.html')
+
 @app.route('/play', methods=['POST'])
 def play_stream():
     youtube_url = request.form.get('url')

@@ -57,11 +57,13 @@
             '';
 
             packages = [
+	      python
               python.pkgs.venvShellHook
               python.pkgs.fastapi-cli
               python.pkgs.fastapi
               python.pkgs.yt-dlp
               python.pkgs.flask
+	      pkgs.tmux
 
             ];
           };
