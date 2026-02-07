@@ -249,6 +249,40 @@
     </div>
 
     <header>
+        <div class="greet-container">
+          <span class="greet-text">Hi, {{ user_name }}!</span>
+          <style>
+            /* --- Greeting Container --- */
+            .greet-container {
+                display: flex;
+                align-items: center;
+            }
+
+            /* --- Greeting Text --- */
+            .greet-text {
+                font-size: 0.9rem;
+                font-weight: 600;
+                letter-spacing: 0.3px;
+
+                color: rgba(255, 255, 255, 0.85);
+
+                padding: 8px 16px;
+                border-radius: 999px;
+
+                background: rgba(255, 255, 255, 0.08);
+                backdrop-filter: blur(12px);
+
+                box-shadow:
+                    inset 0 1px 0 rgba(255, 255, 255, 0.05),
+                    0 8px 20px rgba(0, 0, 0, 0.35);
+            }
+
+            .greet-text strong {
+                color: white;
+                font-weight: 700;
+            }
+          </style>
+        </div>
         <div class="search-container">
             <div class="input-wrapper">
                 <input type="text" id="url-input" name="query" 
@@ -263,7 +297,159 @@
                     Add
                 </button>
             </form>
+            <style>
+              .search-container {
+                position: absolute;
+                left: 50%;
+                transform: translateX(-50%);
+
+                display: flex;
+                gap: 15px;
+                width: 100%;
+                max-width: 600px;
+              }
+            </style>
         </div>
+        <div class="invite-dialog-container">
+          <button id="open-dialog-btn">Invite</button>
+          <dialog id="invite-dialog">
+            <h2>Invite friends to your room!</h2>
+            <p><b>Code:</b> {{ room.session_id }}</p>
+            <button id="close-dialog-btn">Close</button>
+          </dialog>
+          <script>
+            const dialog = document.getElementById('invite-dialog');
+
+            document.getElementById('open-dialog-btn')
+              .addEventListener('click', () => dialog.showModal());
+
+            document.getElementById('close-dialog-btn')
+              .addEventListener('click', () => dialog.close());
+          </script>
+
+          <style>
+            .invite-dialog-container {
+              margin-left: auto;          /* push to far right */
+              display: flex;
+              align-items: center;        /* vertical centering */
+            }
+
+            /* --- Dialog Backdrop --- */
+            dialog::backdrop {
+                background: rgba(0, 0, 0, 0.75);
+                backdrop-filter: blur(6px);
+            }
+
+            /* --- Dialog Container --- */
+            dialog {
+                background: rgba(15, 15, 15, 0.85);
+                color: var(--text-primary);
+                border: 1px solid rgba(255, 255, 255, 0.08);
+                border-radius: 20px;
+                padding: 32px;
+                width: 100%;
+                max-width: 420px;
+
+                box-shadow:
+                    0 30px 60px rgba(0, 0, 0, 0.7),
+                    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+
+                backdrop-filter: blur(20px);
+                animation: fadeIn 0.25s ease;
+            }
+
+            /* --- Dialog Typography --- */
+            dialog h2 {
+                margin: 0 0 12px 0;
+                font-size: 1.4rem;
+                font-weight: 800;
+            }
+
+            dialog p {
+                margin: 0 0 24px 0;
+                color: rgba(255, 255, 255, 0.75);
+                line-height: 1.5;
+                word-break: break-all;
+            }
+
+            /* --- Dialog Buttons --- */
+            dialog button {
+                background: white;
+                color: black;
+                border: none;
+                border-radius: 24px;
+                padding: 10px 22px;
+                font-weight: 700;
+                cursor: pointer;
+                transition: transform 0.1s, filter 0.2s;
+            }
+
+            dialog button:hover {
+                filter: brightness(0.9);
+            }
+
+            dialog button:active {
+                transform: scale(0.96);
+            }
+
+            /* Optional secondary button style */
+            dialog .btn-secondary {
+                background: rgba(255,255,255,0.1);
+                color: white;
+            }
+
+            /* --- Invite Button --- */
+            #open-dialog-btn {                
+                background: rgba(255, 255, 255, 0.12);
+                color: white;
+                border: 1px solid rgba(255, 255, 255, 0.15);
+                border-radius: 999px;
+
+                padding: 10px 22px;
+                font-size: 0.85rem;
+                font-weight: 700;
+                letter-spacing: 0.4px;
+
+                cursor: pointer;
+                backdrop-filter: blur(12px);
+                box-shadow:
+                    0 10px 25px rgba(0, 0, 0, 0.4),
+                    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+
+                transition:
+                    background 0.2s ease,
+                    transform 0.1s ease,
+                    box-shadow 0.2s ease;
+            }
+
+            /* Hover = subtle glow */
+            #open-dialog-btn:hover {
+                background: rgba(255, 255, 255, 0.18);
+                box-shadow:
+                    0 15px 35px rgba(0, 0, 0, 0.55),
+                    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+            }
+
+            /* Pressed */
+            #open-dialog-btn:active {
+                transform: scale(0.96);
+            }
+
+            /* Keyboard accessibility */
+            #open-dialog-btn:focus-visible {
+                outline: none;
+                box-shadow:
+                    0 0 0 2px rgba(255, 255, 255, 0.4),
+                    0 15px 35px rgba(0, 0, 0, 0.6);
+            }
+          </style>
+        </div>
+        <style>
+          header {
+            display: flex;
+            align-items: center;
+          }
+        </style>
     </header>
 
     <main>
