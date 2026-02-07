@@ -55,35 +55,56 @@ def read_root(request: Request):
 
 @app.post("/play", response_class=HTMLResponse)
 async def play_stream(request: Request):
-    """
-    HTMX Endpoint: Returns the styled audio player fragment.
-    """
     session_id = request.cookies.get("session_id")
-    
-    # ... (Your existing logic to get room and validate queue) ...
     current_room = Room.get_room_from_session_id(session_id, rooms)
+    
     if not current_room.queue:
-        return "<p style='padding: 20px; text-align: center; color: #aaa;'>Queue is empty. Add a song first!</p>"
+        return "<p style='padding: 20px; text-align: center; color: #aaa;'>Queue is empty.</p>"
 
     current_room.current_song = current_room.queue[0] 
-    await dequeue_song(session_id=session_id, song_url=current_room.current_song.yt_url, dequeuer_id=request.cookies.get("user_id"))
+    
+    await dequeue_song(
+        session_id=session_id, 
+        song_id=current_room.current_song.name,
+        dequeuer_id=request.cookies.get("user_id")
+    )
 
     try:
         direct_stream_url = get_audio_url(current_room.current_song.yt_url)
-        logger.info(f"Fetched audio URL: {direct_stream_url}")
-
-        # THIS IS THE FIX: Render the template instead of returning a string
         return templates.TemplateResponse("partials/player.html", {
             "request": request,
             "stream_url": direct_stream_url,
             "title": current_room.current_song.title,
-            "artist": current_room.current_song.artist, # Ensure your Song object has this, or use "Unknown"
+            "artist": current_room.current_song.artist,
             "album_art": current_room.current_song.album_art
         })
-
     except Exception as e:
         logger.error(f"Error fetching audio: {e}")
-        return f"<p style='color:red; padding: 20px;'>Error fetching audio: {str(e)}</p>"
+        return f"<p style='color:red;'>Error: {str(e)}</p>"
+
+async def dequeue_song(session_id: str, song_id: str, dequeuer_id: str) -> None:
+    current_room: Room = Room.get_room_from_session_id(session_id, rooms)
+    dequeuer: User = User.get_user_from_id(dequeuer_id, current_room.users)
+
+    song_to_remove = next((s for s in current_room.queue if s.name == song_id), None)
+    
+    if not song_to_remove:
+        return
+
+    if not dequeuer.host and song_to_remove.added_by.id != dequeuer.id:
+        raise HTTPException(status_code=403, detail="You can only remove your own songs.")
+
+    current_room.queue.remove(song_to_remove)
+    await broadcast_queue(session_id)
+
+@app.delete("/{session_id}/queue/{song_id}")
+async def remove_song_endpoint(request: Request, session_id: str, song_id: str):
+    user_id = request.cookies.get("user_id")
+    if not user_id:
+        raise HTTPException(status_code=400, detail="No user ID")
+
+    await dequeue_song(session_id=session_id, song_id=song_id, dequeuer_id=user_id)
+    return HTMLResponse(content="", status_code=200)
 
 
     
@@ -198,20 +219,6 @@ async def queue_song(session_id: str, song_url: str, queuer_id: str) -> None:
     )
     
     current_room.queue.append(song)
-
-# @app.delete("/{session_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def dequeue_song(session_id: str, song_url: str, dequeuer_id: str) -> None:
-    current_room: Room = Room.get_room_from_session_id(session_id, rooms)
-
-    dequeuer: User = User.get_user_from_id(dequeuer_id, current_room.users)
-    if not dequeuer.host:
-        raise HTTPException(status_code=403, detail="Bad dequeue permissions")
-
-    song: Song = Song.get_song_from_yt_url(song_url, current_room.queue)
-    
-    current_room.queue.remove(song)
-
-    await broadcast_queue(session_id)
     
 def list_users(session_id: str) -> list[User]:
     current_room: Room = Room.get_room_from_session_id(session_id, rooms)
@@ -321,6 +328,7 @@ def serialize_song(song: Song) -> dict:
         "artist": song.artist,
         "yt_url": song.yt_url,
         "added_by": song.added_by.name,
+        "added_by_id": song.added_by.id,
         "album_art": song.album_art,
     }
 
