@@ -53,15 +53,17 @@ def read_root(request: Request):
     return response
 
 @app.post("/play", response_class=HTMLResponse)
-def play_stream(request: Request):
+async def play_stream(request: Request): # Make async if using async DB calls, otherwise keep def
     """
-    HTMX Endpoint: Returns an audio player fragment.
+    HTMX Endpoint: Returns the styled audio player fragment.
     """
     session_id = request.cookies.get("session_id")
+    
+    # ... (Your existing logic to get room and validate queue) ...
     current_room = Room.get_room_from_session_id(session_id, rooms)
-
     if not current_room.queue:
-        return "<p>Queue is empty. Add a song first!</p>"
+        return "<p style='padding: 20px; text-align: center; color: #aaa;'>Queue is empty. Add a song first!</p>"
+
     next_song = current_room.queue[0] 
     dequeue_song(session_id=session_id, song_url=next_song.yt_url, dequeuer_id=request.cookies.get("user_id"))
 
@@ -69,23 +71,18 @@ def play_stream(request: Request):
         direct_stream_url = get_audio_url(next_song.yt_url)
         logger.info(f"Fetched audio URL: {direct_stream_url}")
 
-        return f"""
-            <div style="background: #222; padding: 20px; border-radius: 8px; text-align: center;">
-                <h4 style="margin-bottom: 10px;">Now Playing: {next_song.title}</h4>
-                
-                <audio controls autoplay style="width: 100%;"
-                       hx-post="/play" 
-                       hx-trigger="ended"
-                       hx-target="#player-container"
-                       hx-swap="innerHTML">
-                    <source src="{direct_stream_url}" type="audio/mp4">
-                    Your browser does not support the audio element.
-                </audio>
-            </div>
-        """
+        # THIS IS THE FIX: Render the template instead of returning a string
+        return templates.TemplateResponse("partials/player.html", {
+            "request": request,
+            "stream_url": direct_stream_url,
+            "title": next_song.title,
+            "artist": next_song.artist, # Ensure your Song object has this, or use "Unknown"
+            "album_art": next_song.album_art
+        })
+
     except Exception as e:
         logger.error(f"Error fetching audio: {e}")
-        return f"<p style='color:red'>Error fetching audio: {str(e)}</p>"
+        return f"<p style='color:red; padding: 20px;'>Error fetching audio: {str(e)}</p>"
 
 
     
