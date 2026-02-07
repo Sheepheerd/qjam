@@ -1,18 +1,57 @@
 import uuid
+import yt_dlp
+import logging
+from fastapi import FastAPI, HTTPException, status, Request, Form
+from fastapi.responses import HTMLResponse
+from fastapi.templating import Jinja2Templates
 
-from fastapi import FastAPI, HTTPException, status
 
+# Keep your existing relative imports
 from .types import Room, Song, User
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 app = FastAPI()
 
+# Initialize templates looking in the local 'templates' directory
+templates = Jinja2Templates(directory="src/templates")
+
 rooms: list[Room] = []
 
+# --- Helper Function from frontend/app.py ---
+def get_audio_url(youtube_url: str):
+    ydl_opts = {"format": "bestaudio/best", "quiet": True}
+    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+        info = ydl.extract_info(youtube_url, download=False)
+        return info["url"]
 
-@app.get("/")
-def read_root() -> dict[str, str]:
-    return {"message": "FastAPI is up and running!"}
+# --- Modified Root Route (Serving HTML) ---
+# We change the return type to HTMLResponse and accept the 'request' object
+@app.get("/", response_class=HTMLResponse)
+def read_root(request: Request):
+    # This replaces: return {"message": "FastAPI is up and running!"}
+    return templates.TemplateResponse("index.html", {"request": request})
 
+# --- New Play Route (Ported from Flask) ---
+# FastAPI uses 'Form(...)' to read form-data, similar to request.form.get()
+@app.post("/play", response_class=HTMLResponse)
+def play_stream(url: str = Form(...)):
+    try:
+        direct_stream_url = get_audio_url(url)
+        logger.info(f"Fetched audio URL: {direct_stream_url}")
+        # Return the HTML fragment for HTMX to swap
+        return f"""
+        <audio controls autoplay style="width: 100%;">
+            <source src="{direct_stream_url}" type="audio/mp4">
+            Your browser does not support the audio element.
+        </audio>
+        """
+    except Exception as e:
+        # Handle errors gracefully in the UI
+        return f"<p style='color:red'>Error fetching audio: {str(e)}</p>"
+
+# --- Existing API Routes (Unchanged) ---
 
 @app.post("/new", status_code=status.HTTP_201_CREATED)
 def create_room(host_id: str, host_name: str) -> Room:
@@ -25,7 +64,6 @@ def create_room(host_id: str, host_name: str) -> Room:
     rooms.append(room)
     return room
 
-
 @app.delete("/{session_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_room(session_id: str) -> None:
     try:
@@ -34,7 +72,6 @@ def delete_room(session_id: str) -> None:
         raise HTTPException(status_code=404, detail="Room to delete not found")
     except Exception:
         raise HTTPException(status_code=400, detail="Unknown server error")
-
 
 @app.post("/{session_id}", status_code=status.HTTP_204_NO_CONTENT)
 def queue_song(session_id: str, song_url: Song, queuer_id: str) -> None:
@@ -47,7 +84,6 @@ def queue_song(session_id: str, song_url: Song, queuer_id: str) -> None:
     song: Song = Song(name=uuid.uuid4().hex, yt_url=song_url, added_by=queuer)
     current_room.queue.append(song)
 
-
 @app.delete("/{session_id}", status_code=status.HTTP_204_NO_CONTENT)
 def dequeue_song(session_id: str, song_url: Song, dequeuer_id: str) -> None:
     current_room: Room = Room.get_room_from_session_id(session_id, rooms)
@@ -59,18 +95,15 @@ def dequeue_song(session_id: str, song_url: Song, dequeuer_id: str) -> None:
     song: Song = Song.get_song_from_yt_url(song_url, current_room.queue)
     current_room.queue.remove(song)
 
-
 # DO NOT MAKE THIS PUBLIC
 @app.get("/list", status_code=status.HTTP_200_OK)
 def list_rooms() -> list[Room]:
     return rooms
 
-
 @app.get("/{session_id}/users", status_code=status.HTTP_200_OK)
 def list_users(session_id: str) -> list[User]:
     current_room: Room = Room.get_room_from_session_id(session_id, rooms)
     return current_room.users
-
 
 @app.get("/{session_id}/queue", status_code=status.HTTP_200_OK)
 def list_queue(session_id: str) -> list[Song]:

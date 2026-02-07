@@ -57,12 +57,15 @@
             '';
 
             packages = [
+              python
               python.pkgs.venvShellHook
               python.pkgs.fastapi-cli
               python.pkgs.fastapi
               python.pkgs.yt-dlp
               python.pkgs.flask
               python.pkgs.pydantic
+              python.pkgs.python-multipart
+              pkgs.gh
             ];
           };
         }
