@@ -65,20 +65,20 @@ async def play_stream(request: Request):
     if not current_room.queue:
         return "<p style='padding: 20px; text-align: center; color: #aaa;'>Queue is empty. Add a song first!</p>"
 
-    next_song = current_room.queue[0] 
-    await dequeue_song(session_id=session_id, song_url=next_song.yt_url, dequeuer_id=request.cookies.get("user_id"))
+    current_room.current_song = current_room.queue[0] 
+    await dequeue_song(session_id=session_id, song_url=current_room.current_song.yt_url, dequeuer_id=request.cookies.get("user_id"))
 
     try:
-        direct_stream_url = get_audio_url(next_song.yt_url)
+        direct_stream_url = get_audio_url(current_room.current_song.yt_url)
         logger.info(f"Fetched audio URL: {direct_stream_url}")
 
         # THIS IS THE FIX: Render the template instead of returning a string
         return templates.TemplateResponse("partials/player.html", {
             "request": request,
             "stream_url": direct_stream_url,
-            "title": next_song.title,
-            "artist": next_song.artist, # Ensure your Song object has this, or use "Unknown"
-            "album_art": next_song.album_art
+            "title": current_room.current_song.title,
+            "artist": current_room.current_song.artist, # Ensure your Song object has this, or use "Unknown"
+            "album_art": current_room.current_song.album_art
         })
 
     except Exception as e:
@@ -146,6 +146,7 @@ def create_room(host_id: str, host_name: str) -> Room:
         session_id=uuid.uuid4().hex,
         users=[User(id=host_id, name=host_name, host=True)],
         queue=[],
+        current_song=None,
         queue_index=-1,
     )
     rooms.append(room)
@@ -319,15 +320,29 @@ def serialize_song(song: Song) -> dict:
 
 
 async def broadcast_queue(session_id: str):
-    """Helper to send the current queue to all connected clients."""
+    """Helper to send the current queue AND now_playing to all connected clients."""
     room = Room.get_room_from_session_id(session_id, rooms)
     if not room: return
 
-    payload = [serialize_song(s) for s in room.queue]
+    # 1. Serialize the list
+    queue_data = [serialize_song(s) for s in room.queue]
+
+    # 2. Serialize the single song (check if it exists first)
+    now_playing_song = None
+    if room.current_song:
+        now_playing_song = serialize_song(room.current_song)
+
+    # 3. Wrap them in a parent dictionary
+    payload = {
+        "queue": queue_data,
+        "now_playing": now_playing_song
+    }
+
     active_connections = connections.get(session_id, [])
 
     for ws in active_connections:
         try:
             await ws.send_json(payload)
         except RuntimeError:
+            # Connection might be closed already
             pass
