@@ -31,6 +31,7 @@ class Room(BaseModel):
     session_id: str
     users: list[User]
     queue: list[Song]
+    current_song: Song | None
     queue_index: int
 
     @classmethod

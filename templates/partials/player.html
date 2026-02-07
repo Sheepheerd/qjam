@@ -30,25 +30,25 @@
     </div>
 </div>
 
-<div id="now-playing-art" hx-swap-oob="true">
-    {% if album_art %}
-        <img src="{{ album_art | safe }}" alt="Album Art" style="width: 100%; height: 100%; object-fit: cover;">
-    {% else %}
-        <div style="width: 100%; height: 100%; background: rgba(255,255,255,0.1); display: flex; align-items: center; justify-content: center;">🎵</div>
-    {% endif %}
-</div>
+<!-- <div id="now-playing-art" hx-swap-oob="true"> -->
+<!--     {% if album_art %} -->
+<!--         <img src="{{ album_art | safe }}" alt="Album Art" style="width: 100%; height: 100%; object-fit: cover;"> -->
+<!--     {% else %} -->
+<!--         <div style="width: 100%; height: 100%; background: rgba(255,255,255,0.1); display: flex; align-items: center; justify-content: center;">🎵</div> -->
+<!--     {% endif %} -->
+<!-- </div> -->
 
-<div id="main-info-area" hx-swap-oob="true">
-    <h1 id="main-title">{{ title }}</h1>
-    <h2 id="main-artist">{{ artist }}</h2>
-</div>
+<!-- <div id="main-info-area" hx-swap-oob="true"> -->
+<!--     <h1 id="main-title">{{ title }}</h1> -->
+<!--     <h2 id="main-artist">{{ artist }}</h2> -->
+<!-- </div> -->
 
-<div id="ambient-background" hx-swap-oob="true">
-    {% if album_art %}
-        <img src="{{ album_art | safe }}">
-    {% endif %}
-    <div class="vignette"></div>
-</div>
+<!-- <div id="ambient-background" hx-swap-oob="true"> -->
+<!--     {% if album_art %} -->
+<!--         <img src="{{ album_art | safe }}"> -->
+<!--     {% endif %} -->
+<!--     <div class="vignette"></div> -->
+<!-- </div> -->
 
 
 <script>
