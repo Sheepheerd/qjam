@@ -109,10 +109,11 @@ def jam_room(request: Request, username: str = Form(...)):
         raise HTTPException(status_code=400, detail="No user ID found in cookies")
 
     new_room: Room = create_room(host_id=user_id, host_name=username)
+    current_user: User = User.get_user_from_id(user_id, new_room.users)
     response: Any = templates.TemplateResponse("room.html", {
         "request": request, 
         "room": new_room,
-        "user_name": username,
+        "user": current_user,
     })
     response.set_cookie(key="session_id", value=new_room.session_id, httponly=True)
     
@@ -125,11 +126,12 @@ def join_room(request: Request, session_id: str = Form(...), username: str = For
         raise HTTPException(status_code=400, detail="No user ID found in cookies")
     
     current_room: Room = Room.get_room_from_session_id(session_id, rooms)
-    current_room.users.append(User(id=user_id, name=username, host=False))
+    current_user: User = User(id=user_id, name=username, host=False)
+    current_room.users.append(current_user)
     response: Any = templates.TemplateResponse("room.html", {
         "request": request, 
         "room": current_room,
-        "user_name": username,
+        "user": current_user,
     })
     response.set_cookie(key="session_id", value=current_room.session_id, httponly=True)
     

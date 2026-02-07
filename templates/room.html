@@ -249,37 +249,172 @@
     </div>
 
     <header>
-        <div class="greet-container">
-          <span class="greet-text">Hi, {{ user_name }}!</span>
-          <style>
-            /* --- Greeting Container --- */
-            .greet-container {
-                display: flex;
-                align-items: center;
-            }
+        <div class="greet-permissions-container">
+          <button id="open-permissions-btn">Hi, {{ user.name }}!</button>
+          <dialog id="permissions-dialog">
+            {% if user.host %}
+              <span class="is-host-text"><h2>You are the host of the room!</h2></span>
+            {% else %}
+              <span class="is-guest-text"><h2>You are a guest of the room!</h2></span>
+            {% endif %}
+            <span class="can-queue-text">✅ You can queue songs</span>
+            <span class="can-order-queue-text">✅ You can change the queue order</span>
+            {% if user.host %}
+              <span class="can-play-text">✅ You can play songs</span>
+            {% else %}
+              <span class="cannot-play-text">❌ You cannot play songs</span>
+            {% endif %}
+            <button id="close-permissions-btn">Close</button>
+          </dialog>
+          <script>
+            const permissions_dialog = document.getElementById('permissions-dialog');
 
-            /* --- Greeting Text --- */
-            .greet-text {
-                font-size: 0.9rem;
+            document.getElementById('open-permissions-btn')
+              .addEventListener('click', () => permissions_dialog.showModal());
+
+            document.getElementById('close-permissions-btn')
+              .addEventListener('click', () => permissions_dialog.close());
+          </script>
+          <style>
+            #open-permissions-btn {
+                background: rgba(255, 255, 255, 0.08);
+                color: rgba(255, 255, 255, 0.9);
+
+                border: 1px solid rgba(255, 255, 255, 0.12);
+                border-radius: 999px;
+
+                padding: 8px 18px;
+                font-size: 0.85rem;
                 font-weight: 600;
                 letter-spacing: 0.3px;
 
-                color: rgba(255, 255, 255, 0.85);
-
-                padding: 8px 16px;
-                border-radius: 999px;
-
-                background: rgba(255, 255, 255, 0.08);
+                cursor: pointer;
                 backdrop-filter: blur(12px);
 
                 box-shadow:
                     inset 0 1px 0 rgba(255, 255, 255, 0.05),
                     0 8px 20px rgba(0, 0, 0, 0.35);
+
+                transition:
+                    background 0.2s ease,
+                    transform 0.1s ease,
+                    box-shadow 0.2s ease;
             }
 
-            .greet-text strong {
-                color: white;
+            #open-permissions-btn:hover {
+                background: rgba(255, 255, 255, 0.14);
+                box-shadow:
+                    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+                    0 12px 28px rgba(0, 0, 0, 0.45);
+            }
+
+            #open-permissions-btn:active {
+                transform: scale(0.96);
+            }
+
+            #open-permissions-btn:focus-visible {
+                outline: none;
+                box-shadow:
+                    0 0 0 2px rgba(255, 255, 255, 0.35),
+                    0 12px 28px rgba(0, 0, 0, 0.5);
+            }
+
+            /* --- Permission Rows --- */
+            #permissions-dialog span {
+                display: flex;
+                align-items: center;
+                gap: 10px;
+
+                margin-bottom: 12px;
+                padding: 10px 14px;
+
+                background: rgba(255, 255, 255, 0.025);
+                border: 1px solid rgba(255, 255, 255, 0.08);
+                border-radius: 14px;
+
+                font-size: 0.9rem;
+                font-weight: 600;
+                letter-spacing: 0.2px;
+
+                box-shadow:
+                    inset 0 1px 0 rgba(255, 255, 255, 0.03);
+
+                backdrop-filter: blur(10px);
+            }
+
+            /* Remove extra space after last item */
+            #permissions-dialog span:last-of-type {
+                margin-bottom: 22px;
+            }
+
+            /* --- Host / Guest Messaging --- */
+            #permissions-dialog h2 {
+                margin: 0 0 5px 0;
+                font-size: 1.3rem;
+                font-weight: 800;
+                text-align: center;
+            }
+
+            /* --- Positive Permissions --- */
+            .can-queue-text,
+            .can-order-queue-text,
+            .can-play-text {
+                color: #a8e6c1;
+                text-shadow: 0 0 10px rgba(168, 230, 193, 0.2);
+            }
+
+            /* --- Negative Permission --- */
+            .cannot-play-text {
+                color: #ff9b9b;
+                background: rgba(255, 80, 80, 0.08);
+                border-color: rgba(255, 120, 120, 0.18);
+
+                text-shadow: 0 0 10px rgba(255, 120, 120, 0.25);
+            }
+
+            .is-host-text,
+            .is-guest-text {
+                display: block;
+                justify-content: center; /* horizontal */
+                text-align: center;
+                margin-bottom: 16px;
+            }
+
+            /* Host = subtle positive glow */
+            .is-host-text h2 {
+                color: #9fe6b8;
+                text-shadow: 0 0 18px rgba(159, 230, 184, 0.25);
+            }
+
+            /* Guest = neutral / informational */
+            .is-guest-text h2 {
+                color: rgba(255, 255, 255, 0.85);
+            }
+
+            /* --- Dialog Button --- */
+            #permissions-dialog button {
+                display: block;
+                margin: 0 auto;
+
+                background: white;
+                color: black;
+
+                border: none;
+                border-radius: 24px;
+                padding: 10px 22px;
+
                 font-weight: 700;
+                cursor: pointer;
+
+                transition: transform 0.1s ease, filter 0.2s ease;
+            }
+
+            #permissions-dialog button:hover {
+                filter: brightness(0.9);
+            }
+
+            #permissions-dialog button:active {
+                transform: scale(0.96);
             }
           </style>
         </div>
@@ -318,13 +453,13 @@
             <button id="close-dialog-btn">Close</button>
           </dialog>
           <script>
-            const dialog = document.getElementById('invite-dialog');
+            const invite_dialog = document.getElementById('invite-dialog');
 
             document.getElementById('open-dialog-btn')
-              .addEventListener('click', () => dialog.showModal());
+              .addEventListener('click', () => invite_dialog.showModal());
 
             document.getElementById('close-dialog-btn')
-              .addEventListener('click', () => dialog.close());
+              .addEventListener('click', () => invite_dialog.close());
           </script>
 
           <style>
