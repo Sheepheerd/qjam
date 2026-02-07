@@ -53,20 +53,43 @@ def read_root(request: Request):
     return response
 
 @app.post("/play", response_class=HTMLResponse)
-def play_stream(request: Request, url: str = Form(...)):
+def play_stream(request: Request):
     """
     HTMX Endpoint: Returns an audio player fragment.
     """
+    session_id = request.cookies.get("session_id")
+    current_room = Room.get_room_from_session_id(session_id, rooms)
+
+    if not current_room.queue:
+        return "<p>Queue is empty. Add a song first!</p>"
+    next_song = current_room.queue[0] 
+    dequeue_song(session_id=session_id, song_url=next_song.yt_url, dequeuer_id=request.cookies.get("user_id"))
+
+
     try:
-        direct_stream_url = get_audio_url(url)
+        direct_stream_url = get_audio_url(next_song.yt_url)
         logger.info(f"Fetched audio URL: {direct_stream_url}")
-        return templates.TemplateResponse(
-            "partials/player.html", 
-            {"request": request, "stream_url": direct_stream_url}
-        )
+
+        return f"""
+            <div style="background: #222; padding: 20px; border-radius: 8px; text-align: center;">
+                <h4 style="margin-bottom: 10px;">Now Playing: {next_song.title}</h4>
+                
+                <audio controls autoplay style="width: 100%;"
+                       hx-post="/play" 
+                       hx-trigger="ended"
+                       hx-target="#player-container"
+                       hx-swap="innerHTML">
+                    <source src="{direct_stream_url}" type="audio/mp4">
+                    Your browser does not support the audio element.
+                </audio>
+            </div>
+        """
     except Exception as e:
         logger.error(f"Error fetching audio: {e}")
         return f"<p style='color:red'>Error fetching audio: {str(e)}</p>"
+
+
+    
     
 @app.post("/{session_id}/queue", response_class=HTMLResponse)
 async def add_to_queue(request: Request, session_id: str, url: str = Form(...)):
@@ -80,18 +103,8 @@ async def add_to_queue(request: Request, session_id: str, url: str = Form(...)):
     queue_song(session_id=session_id, song_url=url, queuer_id=user_id)
     
     return """
-    <input type="text" name="url" placeholder="Song queued! Add another..." required>
     """
     
-@app.get("/{session_id}/queue", response_class=HTMLResponse)
-async def current_queue_partial(request: Request, session_id: str):
-    queue: list[Song] = list_queue(session_id) 
-    
-    html_content = ""
-    for song in queue:
-        html_content += f"<li>{song}</li>"
-        
-    return html_content
 
 @app.post("/room", response_class=HTMLResponse)
 def jam_room(request: Request, username: str = Form(...)):
@@ -207,3 +220,43 @@ async def get_queue_partial(request: Request, session_id: str):
         "partials/queue_items.html",
         {"request": request, "queue": queue},
     )
+
+
+
+def search_youtube(query: str):
+    ydl_opts = {
+        'quiet': True,
+        'skip_download': True,
+        'noplaylist': True,
+        'extract_flat': True,
+    }
+    
+    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+        try:
+            info = ydl.extract_info(f"ytsearch5:{query}", download=False)
+            return info.get('entries', [])
+        except Exception:
+            return []
+
+@app.post("/search", response_class=HTMLResponse)
+async def search_videos(request: Request, query: str = Form(...)):
+    results = search_youtube(query)
+    
+    html_content = ""
+    for video in results:
+        title = video.get('title')
+        url = video.get('url')
+        if not url and video.get('id'):
+            url = f"https://www.youtube.com/watch?v={video.get('id')}"
+            
+        html_content += f"""
+        <li role="option" 
+            onclick="document.getElementById('url-input').value = '{url}'; document.getElementById('search-results').innerHTML = '';">
+            <strong>{title}</strong>
+        </li>
+        """
+        
+    if not html_content:
+        html_content = "<li>No results found</li>"
+        
+    return html_content

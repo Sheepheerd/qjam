@@ -10,19 +10,45 @@
 
     <h1>Audio Aggregator</h1>
 
-    <form hx-post="/play" hx-target="#player-container" hx-swap="innerHTML">
-      <label for="url">Paste YouTube URL:</label>
-      <input type="text" name="url" placeholder="https://youtube.com/watch?v=..." required>
-      <button type="submit">Play Stream</button>
-    </form>
 
-    <hr>
 
-    <div id="player-container">
-      <p>No audio playing.</p>
+    <label for="search">Search YouTube or Paste URL:</label>
+
+    <div class="search-container" style="position: relative;">
+
+      <input type="text" 
+	id="url-input"
+	name="query" 
+	placeholder="Search song..." 
+	autocomplete="off"
+	hx-post="/search" 
+	hx-trigger="keyup changed delay:500ms" 
+	hx-target="#search-results">
+
+      <ul id="search-results" 
+	role="listbox" 
+	style="position: absolute; 
+	top: 100%; 
+	left: 0; 
+	right: 0; 
+	z-index: 100; 
+	background: #1f2937; 
+	border: 1px solid #374151; 
+	list-style: none; 
+	padding: 0; 
+	margin: 0;
+	max-height: 200px; 
+	overflow-y: auto;">
+      </ul>
+
     </div>
 
-
+    <form hx-post="/{{ room.session_id }}/queue" hx-target="#input-wrapper">
+      <input type="hidden" name="url" id="hidden-submission-url">
+      <button type="submit" onclick="document.getElementById('hidden-submission-url').value = document.getElementById('url-input').value">
+	Queue Selected Song
+      </button>
+    </form>
 
     <h3>Current Queue</h3>
 
@@ -34,16 +60,21 @@
     </ul>
 
     <form hx-post="/{{ room.session_id }}/queue" hx-target="#input-wrapper" hx-swap="innerHTML">
-      <label for="url">Add to Queue:</label>
       <div class="grid">
 
 	<div id="input-wrapper">
-	  <input type="text" name="url" placeholder="https://youtube.com/..." required>
 	</div>
 
-	<button type="submit">Queue</button>
       </div>
     </form>
+
+
+    <form hx-post="/play" hx-target="#player-container" hx-swap="innerHTML">
+      <button type="submit">Play Top of Queue</button>
+    </form>
+
+    <div id="player-container">
+    </div>
 
   </body>
 </html>
