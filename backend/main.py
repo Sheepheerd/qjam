@@ -12,7 +12,6 @@ from backend.types import Room, Song, User
 
 from .types import Room, Song, User
 
-# Configure Logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
@@ -21,7 +20,6 @@ app = FastAPI()
 connections: Dict[str, List[WebSocket]] = {}
 
 
-# Point to the templates directory
 templates = Jinja2Templates(directory="templates")
 
 rooms: list[Room] = []
@@ -35,7 +33,6 @@ def get_audio_url(youtube_url: str):
         info = ydl.extract_info(youtube_url, download=False)
         return info["url"]
 
-# --- Frontend / View Routes ---
 
 @app.get("/", response_class=HTMLResponse)
 def read_root(request: Request):
@@ -57,7 +54,7 @@ def read_root(request: Request):
     return response
 
 @app.post("/play", response_class=HTMLResponse)
-async def play_stream(request: Request): # Make async if using async DB calls, otherwise keep def
+async def play_stream(request: Request):
     """
     HTMX Endpoint: Returns the styled audio player fragment.
     """
@@ -69,7 +66,7 @@ async def play_stream(request: Request): # Make async if using async DB calls, o
         return "<p style='padding: 20px; text-align: center; color: #aaa;'>Queue is empty. Add a song first!</p>"
 
     next_song = current_room.queue[0] 
-    dequeue_song(session_id=session_id, song_url=next_song.yt_url, dequeuer_id=request.cookies.get("user_id"))
+    await dequeue_song(session_id=session_id, song_url=next_song.yt_url, dequeuer_id=request.cookies.get("user_id"))
 
     try:
         direct_stream_url = get_audio_url(next_song.yt_url)
@@ -101,10 +98,8 @@ async def add_to_queue(request: Request, session_id: str, url: str = Form(...)):
         raise HTTPException(status_code=400, detail="No user ID found in cookies")
 
     await queue_song(session_id=session_id, song_url=url, queuer_id=user_id)
-    room = Room.get_room_from_session_id(session_id, rooms)
-    payload = [serialize_song(s) for s in room.queue]
-    for ws in connections.get(session_id, []):
-        await ws.send_json(payload)
+    
+    await broadcast_queue(session_id)
 
     return ""
  
@@ -145,9 +140,7 @@ def join_room(request: Request, session_id: str = Form(...), username: str = For
     return response
     
 
-# --- API Routes ---
 
-# @app.post("/new", status_code=status.HTTP_201_CREATED)
 def create_room(host_id: str, host_name: str) -> Room:
     room: Room = Room(
         session_id=uuid.uuid4().hex,
@@ -158,7 +151,6 @@ def create_room(host_id: str, host_name: str) -> Room:
     rooms.append(room)
     return room
 
-# @app.delete("/{session_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_room(session_id: str) -> None:
     try:
         rooms.remove(Room.get_room_from_session_id(session_id, rooms))
@@ -167,7 +159,6 @@ def delete_room(session_id: str) -> None:
     except Exception:
         raise HTTPException(status_code=400, detail="Unknown server error")
 
-# @app.post("/{session_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def queue_song(session_id: str, song_url: str, queuer_id: str) -> None:
 
     current_room = Room.get_room_from_session_id(session_id, rooms)
@@ -208,7 +199,7 @@ async def queue_song(session_id: str, song_url: str, queuer_id: str) -> None:
     current_room.queue.append(song)
 
 # @app.delete("/{session_id}", status_code=status.HTTP_204_NO_CONTENT)
-def dequeue_song(session_id: str, song_url: str, dequeuer_id: str) -> None:
+async def dequeue_song(session_id: str, song_url: str, dequeuer_id: str) -> None:
     current_room: Room = Room.get_room_from_session_id(session_id, rooms)
 
     dequeuer: User = User.get_user_from_id(dequeuer_id, current_room.users)
@@ -216,7 +207,10 @@ def dequeue_song(session_id: str, song_url: str, dequeuer_id: str) -> None:
         raise HTTPException(status_code=403, detail="Bad dequeue permissions")
 
     song: Song = Song.get_song_from_yt_url(song_url, current_room.queue)
+    
     current_room.queue.remove(song)
+
+    await broadcast_queue(session_id)
     
 def list_users(session_id: str) -> list[User]:
     current_room: Room = Room.get_room_from_session_id(session_id, rooms)
@@ -280,11 +274,14 @@ async def search_videos(request: Request, query: str = Form(...)):
 async def queue_ws(websocket: WebSocket, session_id: str):
     await websocket.accept()
 
-    room = Room.get_room_from_session_id(session_id, rooms)
+    try:
+        room = Room.get_room_from_session_id(session_id, rooms)
+    except Exception:
+        await websocket.close()
+        return
 
     connections.setdefault(session_id, []).append(websocket)
 
-    # Send initial queue
     await websocket.send_json([serialize_song(s) for s in room.queue])
 
     try:
@@ -292,8 +289,8 @@ async def queue_ws(websocket: WebSocket, session_id: str):
             data = await websocket.receive_json()
 
             if data["type"] == "reorder":
-                new_order = data["order"]  # list of song IDs
-
+                new_order = data["order"] 
+                
                 id_map = {song.name: song for song in room.queue}
 
                 room.queue = [
@@ -302,17 +299,11 @@ async def queue_ws(websocket: WebSocket, session_id: str):
                     if song_id in id_map
                 ]
 
-                payload = [serialize_song(s) for s in room.queue]
-
-                for ws in connections[session_id]:
-                    room = Room.get_room_from_session_id(session_id, rooms)
-                    payload = [serialize_song(s) for s in room.queue]
-
-                    for ws in connections.get(session_id, []):
-                        await ws.send_json(payload)
+                await broadcast_queue(session_id)
 
     except WebSocketDisconnect:
-        connections[session_id].remove(websocket)
+        if session_id in connections:
+            connections[session_id].remove(websocket)
 
 
 def serialize_song(song: Song) -> dict:
@@ -325,3 +316,18 @@ def serialize_song(song: Song) -> dict:
         "album_art": song.album_art,
     }
 
+
+
+async def broadcast_queue(session_id: str):
+    """Helper to send the current queue to all connected clients."""
+    room = Room.get_room_from_session_id(session_id, rooms)
+    if not room: return
+
+    payload = [serialize_song(s) for s in room.queue]
+    active_connections = connections.get(session_id, [])
+
+    for ws in active_connections:
+        try:
+            await ws.send_json(payload)
+        except RuntimeError:
+            pass
