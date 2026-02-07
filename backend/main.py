@@ -3,10 +3,11 @@ import uuid
 from typing import Any
 
 import yt_dlp
-from fastapi import FastAPI, Form, HTTPException, Request, status
+from fastapi import FastAPI, Form, HTTPException, Request, WebSocket, WebSocketDisconnect
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 
+from typing import List, Dict
 from backend.types import Room, Song, User
 
 from .types import Room, Song, User
@@ -16,6 +17,9 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 app = FastAPI()
+
+connections: Dict[str, List[WebSocket]] = {}
+
 
 # Point to the templates directory
 templates = Jinja2Templates(directory="templates")
@@ -97,10 +101,13 @@ async def add_to_queue(request: Request, session_id: str, url: str = Form(...)):
         raise HTTPException(status_code=400, detail="No user ID found in cookies")
 
     await queue_song(session_id=session_id, song_url=url, queuer_id=user_id)
-    
-    return """
-    """
-    
+    room = Room.get_room_from_session_id(session_id, rooms)
+    payload = [serialize_song(s) for s in room.queue]
+    for ws in connections.get(session_id, []):
+        await ws.send_json(payload)
+
+    return ""
+ 
 
 @app.post("/room", response_class=HTMLResponse)
 def jam_room(request: Request, username: str = Form(...)):
@@ -267,3 +274,54 @@ async def search_videos(request: Request, query: str = Form(...)):
         html_content = "<li>No results found</li>"
         
     return html_content
+
+
+@app.websocket("/ws/{session_id}")
+async def queue_ws(websocket: WebSocket, session_id: str):
+    await websocket.accept()
+
+    room = Room.get_room_from_session_id(session_id, rooms)
+
+    connections.setdefault(session_id, []).append(websocket)
+
+    # Send initial queue
+    await websocket.send_json([serialize_song(s) for s in room.queue])
+
+    try:
+        while True:
+            data = await websocket.receive_json()
+
+            if data["type"] == "reorder":
+                new_order = data["order"]  # list of song IDs
+
+                id_map = {song.name: song for song in room.queue}
+
+                room.queue = [
+                    id_map[song_id]
+                    for song_id in new_order
+                    if song_id in id_map
+                ]
+
+                payload = [serialize_song(s) for s in room.queue]
+
+                for ws in connections[session_id]:
+                    room = Room.get_room_from_session_id(session_id, rooms)
+                    payload = [serialize_song(s) for s in room.queue]
+
+                    for ws in connections.get(session_id, []):
+                        await ws.send_json(payload)
+
+    except WebSocketDisconnect:
+        connections[session_id].remove(websocket)
+
+
+def serialize_song(song: Song) -> dict:
+    return {
+        "id": song.name,
+        "title": song.title,
+        "artist": song.artist,
+        "yt_url": song.yt_url,
+        "added_by": song.added_by.name,
+        "album_art": song.album_art,
+    }
+

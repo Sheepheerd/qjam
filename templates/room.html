@@ -628,5 +628,65 @@
         </div>
     </div>
 
+    <script>
+    const roomId = "{{ room.session_id }}";
+    const queueList = document.getElementById("queue-list");
+
+    const socket = new WebSocket(`ws://${window.location.host}/ws/${roomId}`);
+
+    socket.onmessage = (event) => {
+      const queue = JSON.parse(event.data);
+      renderQueue(queue);
+    };
+
+function renderQueue(queue) {
+  queueList.innerHTML = "";
+
+  queue.forEach(item => {
+    const li = document.createElement("li");
+    
+    // FIX: Apply styles using JavaScript, not raw HTML
+    li.style.cssText = "display: flex; gap: 10px; padding: 10px; border-bottom: 1px solid #333; align-items: center;";
+    
+    li.dataset.id = item.id;
+
+    // Use a template literal to build the inner HTML (Image is here)
+    li.innerHTML = `
+      <img src="${item.album_art || 'https://placehold.co/60'}" 
+           alt="Cover"
+           style="width: 60px; height: 60px; object-fit: cover; border-radius: 5px; flex-shrink: 0; margin-right: 10px;"/>
+      
+      <div style="min-width: 0;">
+        <div style="font-weight: bold; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+          ${item.title}
+        </div>
+        <div style="font-size: 0.8em; color: #888;">
+          ${item.artist ?? "Unknown Artist"}
+        </div>
+        <div style="font-size: 0.7em; color: #555;">
+          Added by: ${item.added_by?.name ?? "System"}
+        </div>
+      </div>
+    `;
+
+    queueList.appendChild(li);
+  });
+}
+    Sortable.create(queueList, {
+      animation: 150,
+      onEnd: () => {
+	const newOrder = Array.from(queueList.children).map(
+	  li => li.dataset.id
+	);
+
+	socket.send(JSON.stringify({
+	  type: "reorder",
+	  order: newOrder
+	}));
+      }
+    });
+    </script>
+
+
   </body>
 </html>
