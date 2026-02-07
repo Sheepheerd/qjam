@@ -6,7 +6,6 @@ from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 
 
-# Keep your existing relative imports
 from .types import Room, Song, User
 
 logging.basicConfig(level=logging.INFO)
@@ -14,27 +13,21 @@ logger = logging.getLogger(__name__)
 
 app = FastAPI()
 
-# Initialize templates looking in the local 'templates' directory
 templates = Jinja2Templates(directory="src/templates")
 
 rooms: list[Room] = []
 
-# --- Helper Function from frontend/app.py ---
 def get_audio_url(youtube_url: str):
     ydl_opts = {"format": "bestaudio/best", "quiet": True}
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
         info = ydl.extract_info(youtube_url, download=False)
         return info["url"]
 
-# --- Modified Root Route (Serving HTML) ---
-# We change the return type to HTMLResponse and accept the 'request' object
 @app.get("/", response_class=HTMLResponse)
 def read_root(request: Request):
     # This replaces: return {"message": "FastAPI is up and running!"}
     return templates.TemplateResponse("index.html", {"request": request})
 
-# --- New Play Route (Ported from Flask) ---
-# FastAPI uses 'Form(...)' to read form-data, similar to request.form.get()
 @app.post("/play", response_class=HTMLResponse)
 def play_stream(url: str = Form(...)):
     try:
@@ -51,7 +44,6 @@ def play_stream(url: str = Form(...)):
         # Handle errors gracefully in the UI
         return f"<p style='color:red'>Error fetching audio: {str(e)}</p>"
 
-# --- Existing API Routes (Unchanged) ---
 
 @app.post("/new", status_code=status.HTTP_201_CREATED)
 def create_room(host_id: str, host_name: str) -> Room:
