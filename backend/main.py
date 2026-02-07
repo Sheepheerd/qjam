@@ -1,3 +1,4 @@
+from urllib import request
 import uuid
 import logging
 import yt_dlp
@@ -70,6 +71,32 @@ def play_stream(request: Request, url: str = Form(...), session_id: str | None =
     except Exception as e:
         logger.error(f"Error fetching audio: {e}")
         return f"<p style='color:red'>Error fetching audio: {str(e)}</p>"
+    
+
+
+@app.post("/queue", response_class=HTMLResponse)
+def submit_queue(request: Request, url: str = Form(...), session_id: str | None = Cookie(default=None)):
+    if not session_id:
+        raise HTTPException(status_code=400, detail="No session ID found")
+    
+    logger.info(f"User {session_id} is playing {url}")
+    
+    """
+    HTMX Endpoint: Returns an audio player fragment.
+    """
+    queue_song(session_id=session_id, song_url=url, queuer_id=request.cookies.get("user_id"))
+    try:
+        direct_stream_url = get_audio_url(url)
+        logger.info(f"Fetched audio URL: {direct_stream_url}")
+        
+        # Fix this to add to queue instead of playing immediately
+        # return templates.TemplateResponse(
+        #     "partials/player.html", 
+        #     {"request": request, "stream_url": direct_stream_url}
+        # )
+    except Exception as e:
+        logger.error(f"Error fetching audio: {e}")
+        return f"<p style='color:red'>Error fetching audio: {str(e)}</p>"
 
 @app.post("/room", response_class=HTMLResponse)
 def jam_room(request: Request, username: str = Form(...)):
@@ -89,6 +116,18 @@ def jam_room(request: Request, username: str = Form(...)):
     
     return response
 
+@app.post("/join", response_class=HTMLResponse)
+def join_room(request: Request, session_id: str = Form(...), username: str = Form(...)):
+    queue = list_queue(session_id)
+    user_id = request.cookies.get("user_id")
+
+    response = templates.TemplateResponse("room.html", {
+        "request": request, 
+        "room": Room.get_room_from_session_id(session_id, rooms),
+        "user_name": username
+    })
+
+    return response
     
 
 # --- API Routes ---
