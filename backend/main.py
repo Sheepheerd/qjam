@@ -99,7 +99,7 @@ async def add_to_queue(request: Request, session_id: str, url: str = Form(...)):
     if not user_id:
         raise HTTPException(status_code=400, detail="No user ID found in cookies")
 
-    queue_song(session_id=session_id, song_url=url, queuer_id=user_id)
+    await queue_song(session_id=session_id, song_url=url, queuer_id=user_id)
     
     return """
     """
@@ -161,7 +161,7 @@ def delete_room(session_id: str) -> None:
         raise HTTPException(status_code=400, detail="Unknown server error")
 
 # @app.post("/{session_id}", status_code=status.HTTP_204_NO_CONTENT)
-def queue_song(session_id: str, song_url: str, queuer_id: str) -> None:
+async def queue_song(session_id: str, song_url: str, queuer_id: str) -> None:
 
     current_room = Room.get_room_from_session_id(session_id, rooms)
     queuer = User.get_user_from_id(queuer_id, current_room.users)
