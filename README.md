@@ -1,7 +1,9 @@
 <div align="center">
 
 <img src="./static/logo.png" alt="qjam" width="175" height="50">
+
 Open Source Spotify Jam (Made in 24 hours)
+
 </div>
 
 ## Why QJAM Matters
