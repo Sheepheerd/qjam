@@ -41,7 +41,7 @@ def read_root(request: Request):
     """
     Serves the main page and assigns a session_id cookie if missing.
     """
-    response = templates.TemplateResponse("index.html", {"request": request})
+    response = templates.TemplateResponse("landing.html", {"request": request})
     if not request.cookies.get("user_id"):
         new_user_id = uuid.uuid4().hex
         response.set_cookie(

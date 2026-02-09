@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QJam | The Open Source Party Playlist</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&display=swap" rel="stylesheet">
+    <link rel="icon" href="/static/M.ico" type="image/x-icon">
+    
+    <link rel="stylesheet" href="/static/landing.css">
+</head>
+<body>
+
+    <div class="container">
+        
+        <div class="brand-panel">
+            <img src="/static/logo.png" alt="QJAM" class="brand-logo">
+            <div class="tagline">Queue. Jam. Repeat.</div>
+            
+            <p class="description">
+                The open-source alternative to Spotify Jams. 
+                <br><br>
+                <strong>No accounts required.</strong><br>
+                Just create a room, share the link, and let anyone add tracks to the queue instantly.
+            </p>
+
+            <div class="features">
+                <div class="feature-pill">Browser Based</div>
+                <div class="feature-pill">Instant Sync</div>
+                <div class="feature-pill">Anonymized</div>
+            </div>
+        </div>
+
+        <div class="login-panel">
+            
+            <div class="mode-switch">
+                <button class="mode-btn active" onclick="switchMode('host')">Host Room</button>
+                <button class="mode-btn" onclick="switchMode('join')">Join Room</button>
+            </div>
+
+            <form id="host-form" action="/room" method="post">
+                <div class="input-group">
+                    <label for="host-username">HOST IDENTITY</label>
+                    <input type="text" id="host-username" name="username" placeholder="DISPLAY NAME" required autocomplete="off">
+                </div>
+                <button type="submit">INITIALIZE ROOM</button>
+            </form>
+
+            <form id="join-form" action="/join" method="post" class="hidden">
+                <div class="input-group">
+                    <label for="join-username">GUEST IDENTITY</label>
+                    <input type="text" id="join-username" name="username" placeholder="DISPLAY NAME" required autocomplete="off">
+                </div>
+                <div class="input-group">
+                    <label for="session_id">TARGET FREQUENCY</label>
+                    <input type="text" id="session_id" name="session_id" placeholder="ROOM ID" required autocomplete="off">
+                </div>
+                <button type="submit">CONNECT TO SIGNAL</button>
+            </form>
+
+        </div>
+
+    </div>
+
+    <script>
+        function switchMode(mode) {
+            const hostForm = document.getElementById('host-form');
+            const joinForm = document.getElementById('join-form');
+            const btns = document.querySelectorAll('.mode-btn');
+
+            if (mode === 'host') {
+                hostForm.classList.remove('hidden');
+                joinForm.classList.add('hidden');
+                btns[0].classList.add('active');
+                btns[1].classList.remove('active');
+            } else {
+                hostForm.classList.add('hidden');
+                joinForm.classList.remove('hidden');
+                btns[0].classList.remove('active');
+                btns[1].classList.add('active');
+            }
+        }
+    </script>
+</body>
+</html>
