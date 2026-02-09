@@ -22,7 +22,7 @@ No one likes closed source software that requires barely works.
 
 ## Getting Started
 
-### 🔧 Prerequisites
+### Prerequisites
 
 Before installing, ensure you have the following:
 
@@ -34,7 +34,7 @@ Before installing, ensure you have the following:
 
 ---
 
-### 📥 Installation
+### Installation
 
 1. **Clone the repository:**
 
