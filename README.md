@@ -16,7 +16,7 @@ No one likes closed source software that requires barely works.
 - **Accountless**: Users can create rooms and queue songs without authentication.
 - **Multi-User Support**: Rooms support unlimited parties.
 
-## Demo
+<!-- ## Demo -->
 
 <!-- > `![QJAM Demo](static/demo.gif)` -->
 
