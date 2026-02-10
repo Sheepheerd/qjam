@@ -8,7 +8,7 @@ Open Source Spotify Jam (Made in 24 hours)
 
 ## Why QJAM Matters
 
-No one likes closed source software that requires barely works.
+No one likes closed source software that barely works.
 
 ## Core Features
 
